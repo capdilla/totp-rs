@@ -79,6 +79,9 @@ type HmacSha1 = hmac::Hmac<sha1::Sha1>;
 type HmacSha256 = hmac::Hmac<sha2::Sha256>;
 type HmacSha512 = hmac::Hmac<sha2::Sha512>;
 
+#[cfg(target_arch = "wasm32")]
+use js_sys::Date;
+
 /// Alphabet for Steam tokens.
 #[cfg(feature = "steam")]
 const STEAM_CHARS: &str = "23456789BCDFGHJKMNPQRTVWXY";
@@ -135,8 +138,19 @@ impl Algorithm {
 }
 
 fn system_time() -> Result<u64, SystemTimeError> {
-    let t = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
-    Ok(t)
+    #[cfg(target_arch = "wasm32")]
+    {
+        // Use JavaScript Date API to get the current time in milliseconds since UNIX epoch
+        let t = Date::now() as u64 / 1000; // Convert milliseconds to seconds
+        Ok(t)
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        // Use SystemTime for non-WASM targets
+        let t = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
+        Ok(t)
+    }
 }
 
 /// TOTP holds informations as to how to generate an auth code and validate it. Its [secret](struct.TOTP.html#structfield.secret) field is sensitive data, treat it accordingly
